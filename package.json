@@ -3,7 +3,6 @@
   "description": "A auto scaling threads library",
   "main": "./index.js",
   "dependencies": {
-    "bluebird": "*",
     "usage": "*"
   },
   "version": "0.0.2"
