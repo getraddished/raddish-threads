@@ -13,6 +13,12 @@ class RaddishThreads {
         this.threads = [];
     }
 
+    /**
+     * This method returns the config
+     * the config returned is prefilled with fallback variables if undefined.
+     *
+     * @returns {Object} The configuration object.
+     */
     getConfig() {
         return {
             interval: this.config['interval'] || 500,
@@ -22,6 +28,11 @@ class RaddishThreads {
         };
     }
 
+    /**
+     * This method is called periodically while checking for threads.
+     *
+     * @returns {Promise} A promise containing all the cpu loads.
+     */
     checkThreads() {
         var promises = [],
             self = this;
@@ -61,6 +72,9 @@ class RaddishThreads {
             });
     }
 
+    /**
+     * This method does some basic checks and will start the threads class.
+     */
     start() {
         if(this.isWin) {
             console.log('Threads not suppoerted under Windows!');
