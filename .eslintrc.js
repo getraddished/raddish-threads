@@ -1,6 +1,8 @@
-{
+module.exports = {
     "env": {
-        "node": true
+        "node": true,
+        "es6": true,
+        "mocha": true
     },
     "extends": "eslint:recommended",
     "rules": {
@@ -25,4 +27,4 @@
         "one-var": ["error", {"initialized": "always", "uninitialized": "never"}],
         "no-unneeded-ternary": "error"
     }
-}
+};
