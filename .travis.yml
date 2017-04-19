@@ -1,0 +1,19 @@
+language: node_js
+sudo: false
+node_js:
+  - "4.6"
+  - "5.12"
+  - "6.9"
+  - "7.2"
+script: "npm run-script test-travis"
+after_script: "npm install codeclimate-test-reporter && cat ./coverage/lcov.info | codeclimate-test-reporter"
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+    packages:
+      - g++-4.8
+  code_climate:
+    repo_token: f42f47d7b41a3d03e18be78478e9745a8c009f52286af74cfedc08d7b2da70f2
+env:
+  - CXX=g++-4.8

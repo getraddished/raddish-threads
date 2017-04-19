@@ -1,10 +1,9 @@
 {
-  "name": "raddish-threads",
+  "name": "@raddish/threads",
   "description": "A auto scaling threads library",
   "main": "./index.js",
   "dependencies": {
-    "bluebird": "*",
-    "usage": "*"
+    "usage": "^0.7.1"
   },
-  "version": "0.0.2"
+  "version": "1.0.0"
 }
