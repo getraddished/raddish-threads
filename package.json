@@ -1,9 +1,9 @@
 {
-  "name": "@raddish/threads",
+  "name": "raddish-threads",
   "description": "A auto scaling threads library",
   "main": "./index.js",
   "dependencies": {
     "usage": "^0.7.1"
   },
-  "version": "1.0.0"
+  "version": "1.0.1"
 }
