@@ -29,6 +29,19 @@ class RaddishThreads {
     }
 
     /**
+     * Added the possibility to add the config.
+     *
+     * @method setConfig;
+     * @param config
+     * @return {RaddishThreads} The current object
+     */
+    setConfig(config) {
+        this.config = (typeof config === 'object') ? config : {};
+
+        return this;
+    }
+
+    /**
      * This method is called periodically while checking for threads.
      *
      * @returns {Promise} A promise containing all the cpu loads.
