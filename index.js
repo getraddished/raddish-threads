@@ -1,97 +1,135 @@
 'use strict';
 
-var usage = require('usage');
+var usage = require('usage'),
+    os = require('os'),
+    cluster = require('cluster'),
+    running = false;
 
+/**
+ * Allow for multithreading.
+ * The module supports two versions:
+ * 1. Allocate the threads wihout automatic scaling
+ * 2. Automatically scale the threads to remove threads when not in use.
+ *
+ * @class RaddishTreads
+ */
 class RaddishThreads {
-    constructor() {
-        this.cluster = require('cluster');
-        this.isMaster = this.cluster.isMaster;
-        this.isWorker = this.cluster.isWorker;
-        this.master = this.cluster;
-        this.config = {};
-        this.isWin = /^win/.test(process.platform);
-        this.threads = [];
+    constructor(config) {
+        this.config = Object.assign({
+            threads: os.cpus().length,
+            master: function() {},
+            worker: null,
+            scale: false
+        }, config);
+
+        this._type = cluster.isMaster ? 'master' : 'worker';
+        this.workers = [];
+
+        this.init();
+        this.bind();
     }
 
     /**
-     * This method returns the config
-     * the config returned is prefilled with fallback variables if undefined.
+     * Run the bound method for the current thread.
      *
-     * @returns {Object} The configuration object.
+     * If the thread is a worker, then the worker method will be executed,
+     * however when there is no worker method, the master method is executed.
+     *
+     * If the current threads is the master threads the master method is called.
+     *
+     * @method init
+     * @returns {*}
      */
-    getConfig() {
-        return {
-            interval: this.config['interval'] || 500,
-            maxThreads: this.config['maxThreads'] || 16,
-            minThreshold: this.config['minThreshold'] || 10,
-            maxThreshold: this.config['maxThreshold'] || 50
-        };
+    init() {
+        if(typeof this.config[this._type] === 'function') {
+            return this.config[this._type]();
+        }
+
+        return this.config.master();
     }
 
     /**
-     * Added the possibility to add the config.
+     * Check which functionality to run and bind all the variables to it.
+     * If the scale option is enabled, override the default scale options with the options given (if any).
      *
-     * @method setConfig;
-     * @param config
-     * @return {RaddishThreads} The current object
+     * @method bind
+     * @returns {boolean}
      */
-    setConfig(config) {
-        this.config = (typeof config === 'object') ? config : {};
+    bind() {
+        if(this._type === 'worker') {
+            return;
+        }
 
-        return this;
+        if(!this.config.scale) {
+            // Spawning predetermined amount of threads.
+            for(var i = 0; i < this.config.threads; i++) {
+                this.workers.push(cluster.fork());
+            }
+        } else {
+            // Spawn single worker thread.
+            this.workers.push(cluster.fork());
+
+            // Prep the config.
+            var config = {
+                interval: 500,
+                spawnThreshold: 40,
+                killThreshold: 10
+            };
+
+            if(typeof this.config.scale === 'object') {
+                config = Object.assign(config, this.config.scale);
+            }
+
+            // Forward to scale method.
+            setInterval(this.scale.bind(this, config), config.interval);
+        }
+
+        return true;
     }
 
     /**
-     * This method is called periodically while checking for threads.
+     * The scale method will automatically scale the threads if needed,
+     * also when a thread is not used anymore, it is killed.
      *
-     * @returns {Promise} A promise containing all the cpu loads.
+     * @method scale
+     * @param {Object} config The config object for the scale method.
      */
-    checkThreads() {
-        var promises = [];
-
-        for (var thread of this.threads) {
-            promises.push(new Promise(function (resolve, reject) {
-                usage.lookup(thread.process.pid, function (err, result) {
+    scale(config) {
+        // We will now autospawn new threads.for (var thread of this.threads) {
+        var promises = this.workers.map(function(worker) {
+            return new Promise(function(resolve, reject) {
+                usage.lookup(worker.process.pid, function (err, result) {
                     if (err) {
                         return reject(err);
                     }
 
                     return resolve(result.cpu);
                 });
-            }));
-        }
+            })
+        });
 
-        return Promise.all(promises)
+        Promise.all(promises)
             .then(function (results) {
-                var config = this.getConfig(),
-                    total = this.threads.length,
+                var total = this.workers.length,
                     current = results.reduce(function (a, b) {
                         return a + b;
                     }, 0),
                     mean = current / total;
 
-                if (mean > config.maxThreshold && total < config.maxThreads) {
-                    this.threads.push(this.master.fork());
-                } else if (mean < config.minThreshold && total > 1) {
-                    this.threads.pop().kill();
+                if (mean > config.spawnThreshold && total < this.config.threads) {
+                    this.workers.push(cluster.fork());
+                } else if (mean < config.killThreshold && total > 1) {
+                    this.workers.pop().kill();
                 }
             }.bind(this));
     }
-
-    /**
-     * This method does some basic checks and will start the threads class.
-     */
-    start() {
-        if(this.isWin) {
-            return;
-        }
-
-        if(this.isMaster) {
-            this.threads.push(this.master.fork());
-        }
-
-        setInterval(this.checkThreads.bind(this), this.getConfig().interval);
-    }
 }
 
-module.exports = RaddishThreads;
+module.exports = function(config) {
+    if(running) {
+        throw new Error('RaddishThreads is already called!');
+    }
+
+    running = true;
+    new RaddishThreads(config);
+};
